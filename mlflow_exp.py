@@ -1,11 +1,12 @@
 import mlflow
 import mlflow.sklearn
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_diabetes
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 '''
 # Load dataset
@@ -33,40 +34,47 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 # MLflow Experiment Setup
 mlflow.set_experiment("load_diabetes")
 
-# Log an experiment run
-with mlflow.start_run():
-    # Define model and train it
-    model = LinearRegression()
-    model.fit(X_train, y_train)
+# Define a function to log an experiment
+def log_experiment(model, model_name, params):
+    with mlflow.start_run():
+        # Train the model
+        model.fit(X_train, y_train)
+        
+        # Make predictions
+        predictions = model.predict(X_test)
+        
+        # Calculate metrics
+        mse = mean_squared_error(y_test, predictions)
+        mae = mean_absolute_error(y_test, predictions)
+        r2 = r2_score(y_test, predictions)
+        
+        # Log parameters
+        for param_name, param_value in params.items():
+            mlflow.log_param(param_name, param_value)
+        
+        # Log metrics
+        mlflow.log_metric("mse", mse)
+        mlflow.log_metric("mae", mae)
+        mlflow.log_metric("r2_score", r2)
+        
+        # Log model
+        mlflow.sklearn.log_model(model, model_name)
+        
+        print(f"Experiment for {model_name} logged successfully!")
 
-    # Log parameters
-    mlflow.log_param("model", "LinearRegression")
-    mlflow.log_param("features", X_train)
+# Run 1: Linear Regression
+params_lr = {"fit_intercept": True, "copy_X": True, "n_jobs": -1}
+model_lr = LinearRegression(**params_lr)
+log_experiment(model_lr, "linear_regression_model", params_lr)
 
-    # Log model coefficients (as an example of metrics)
-    mlflow.log_metric("intercept", model.intercept_)
-    mlflow.log_metric("score", model.score(X_test, y_test))
+# Run 2: Ridge Regression
+params_ridge = {"alpha": 1.0, "fit_intercept": True, "solver": "auto"}
+model_ridge = Ridge(**params_ridge)
+log_experiment(model_ridge, "ridge_regression_model", params_ridge)
 
-    # Log the model itself
-    mlflow.sklearn.log_model(model, "linear_regression_model")
+# Run 3: Lasso Regression
+params_lasso = {"alpha": 0.1, "fit_intercept": True, "max_iter": 1000}
+model_lasso = Lasso(**params_lasso)
+log_experiment(model_lasso, "lasso_regression_model", params_lasso)
 
-    # Optionally save model artifacts
-    #mlflow.log_artifact('model_output.txt')
-
-with mlflow.start_run():
-    # Experiment 2: Try a different model or hyperparameter
-    # Create a pipeline with StandardScaler and LinearRegression
-    pipeline = Pipeline([
-        ('scaler', StandardScaler()),
-        ('regressor', LinearRegression())
-    ])
-    
-    # Fit the model
-    pipeline.fit(X_train, y_train)
-    
-    # Log experiment details
-    mlflow.log_param("model", "LinearRegression (Normalized)")
-    mlflow.log_metric("score", pipeline.score(X_test, y_test))
-    mlflow.sklearn.log_model(pipeline, "normalized_linear_regression_model")
-
-
+print("All experiments logged. Check the MLflow UI for details.")
