@@ -1,2 +1,4 @@
 myenv
 mlruns
+.dvc
+dvc_local

@@ -5,13 +5,29 @@ from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_diabetes
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+import pandas as pd
 
+'''
 # Load dataset
-data = load_diabetes()
-X = data.data
-y = data.target
+diabetes = load_diabetes()
+X = diabetes.data
+y = diabetes.target
+
+data = pd.DataFrame(data=diabetes.data, columns=diabetes.feature_names)
+data['target'] = diabetes.target
+
+# Save to CSV
+data.to_csv("data/diabetes.csv", index=False)
 
 # Split into training and testing data
+'''
+dataset_path = "data/diabetes.csv"
+
+# Load the dataset
+data = pd.read_csv(dataset_path)
+X = data.drop(columns=["target"])
+y = data["target"]
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # MLflow Experiment Setup
@@ -25,7 +41,7 @@ with mlflow.start_run():
 
     # Log parameters
     mlflow.log_param("model", "LinearRegression")
-    mlflow.log_param("features", X_train.shape[1])
+    mlflow.log_param("features", X_train)
 
     # Log model coefficients (as an example of metrics)
     mlflow.log_metric("intercept", model.intercept_)
